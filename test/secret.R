@@ -1,7 +1,7 @@
 # Test script, exposing in a minimal number of lines a few of the R grammar#
 # - #
 
-library("dplyr", character.only=TRUE)
+library("dplyr")
 
 # little hack
 iris -> iris

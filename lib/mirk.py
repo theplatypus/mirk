@@ -49,6 +49,13 @@ def add_utils(Rinput, Routput) :
 	noquote -> noquote
 	as.factor -> as.factor
 	rawToChar -> rawToChar
+	library -> .library
+	return -> return
+	pairlist -> pairlist
+	
+	library = function(package){
+		.library(package, character.only=TRUE)
+	}
 	
 	nb_to_str = function(num = 0){
 	if(num != 0){
@@ -70,15 +77,23 @@ def get_symbol(i = 0):
 	binary = "." + bin(i)[2:]
 	return binary.replace("0", ".").replace("1", "_")
 
+def search_eq_symbol(symbol, scopes):
+	for scope in scopes:
+		if (symbol in scope):
+			return scope[symbol]
+	return symbol
 
-def rewrite_code(lexems, outer_scope, init_scope = {}):
+def rewrite_code(lexems, outer_scope, init_scope = {}, block_level = 0):
 	
 	code = ""
 	scope = init_scope
 	#scope = {**outer_scope, **init_scope}
 	var_index = 0
 	last_symbol_used = None
-	block_level = 0
+	#block_level = 0
+	
+	def get_eq(symbol):
+		return search_eq_symbol(symbol, [scope, outer_scope])
 	
 	while(len(lexems) > 0 ):
 		
@@ -92,7 +107,8 @@ def rewrite_code(lexems, outer_scope, init_scope = {}):
 			code += "\n"
 		
 		elif (token == "NULL_CONST"):
-			code += "NULL"
+			print(scope)
+			code += get_eq("eval") + "(" + get_eq("pairlist") + "())"
 		
 		elif (token == "expr"):
 			code += " "
@@ -100,15 +116,13 @@ def rewrite_code(lexems, outer_scope, init_scope = {}):
 		elif (token == "STR_CONST"):
 			
 			chunks = split_str(text[1:-1], 4)
-			code += scope["noquote"] + "(" + scope["paste0"] + "("
+			code += get_eq("noquote") + "(" + get_eq("paste0") + "("
 			for chunk in chunks :
 				codes = [ord(c) for c in chunk]
 				num = sum(codes[i] * 256 ** i for i in range(len(codes)))
-				code += scope["nb_to_str"] + "(" + str(num) + "),"
+				code += get_eq("nb_to_str") + "(" + str(num) + "),"
 			code = code[:-1] # delete last comma
 			code += "))"
-			#code += str(num)
-			#code += text + " "
 		
 		elif (token == "NUM_CONST"):
 			
@@ -130,7 +144,7 @@ def rewrite_code(lexems, outer_scope, init_scope = {}):
 			# if the function is in the scope, replace it
 			# otherwise it's in a distant namepace, leave it inplace
 			symbol = text
-			eq = scope[symbol] if (symbol in scope) else outer_scope[symbol] if (symbol in outer_scope) else symbol
+			eq = get_eq(symbol)
 			code += eq
 			last_symbol_used = symbol
 		
@@ -226,16 +240,11 @@ def rewrite_code(lexems, outer_scope, init_scope = {}):
 				k = code.rfind("\n")
 				code = code[:k] + "\n" + current_symbol + " -> " + eq + "\n" + code[k+1:]
 			
-			code += " function"
+			#code += " function"
 			
-			for i in range(0, len(n)):
-				lex = lexems.pop(0)
-				code += " " + lex[5] + " "
-			
-			(subcode, lexems_left) = rewrite_code(lexems, current_scope, inner_scope)
+			(subcode, lexems_left) = rewrite_code(lexems, current_scope, inner_scope, -1)
 			lexems = lexems_left
-			#code += " function" + subcode
-			code += subcode
+			code += " function" + subcode
 			print()
 			print("new scope : ")
 			print(current_scope)
@@ -243,11 +252,14 @@ def rewrite_code(lexems, outer_scope, init_scope = {}):
 		elif(token == "'{'"):
 			code += "{"
 			block_level += 1
+			trace("level : " + str(block_level), 4)
 		
 		elif(token == "'}'"):
 			code += "}"
 			block_level -= 1
-			if (block_level == 0):
+			trace("level : " + str(block_level), 4)
+			if (block_level == -1):
+				trace("returning... ", 4)
 				return (code, lexems)
 		else:
 			code += text

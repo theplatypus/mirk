@@ -7,6 +7,13 @@
 	noquote -> noquote#
 	as.factor -> as.factor#
 	rawToChar -> rawToChar#
+	library -> .library#
+	return -> return#
+	pairlist -> pairlist#
+	#
+	library = function(package){#
+		.library(package, character.only=TRUE)#
+	}#
 	#
 	nb_to_str = function(num = 0){#
 	if(num != 0){#
@@ -19,7 +26,7 @@
 	# Test script, exposing in a minimal number of lines a few of the R grammar#
 # - #
 #
-library("dplyr", character.only=TRUE)#
+library("dplyr")#
 #
 # little hack#
 iris -> iris#
